@@ -6,7 +6,7 @@ import NpsScale from "./NpsScale";
 import { CITIES, EVENT_FORMATS } from "../data/cities";
 
 // ⬇️ ВСТАВЬТЕ СЮДА URL ВАШЕГО GOOGLE APPS SCRIPT (после деплоя)
-const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyw_sfibP4LhM6M4fUjuFtgkudtxX6tSAYEBJCWhKucXb1zJ_rZ68j9rQ-t5P85pJo-uA/exec";
 
 interface FormData {
   city: string;
@@ -84,9 +84,9 @@ export default function SurveyForm() {
     setStatus("sending");
 
     try {
-      await fetch(GOOGLE_SCRIPT_URL, {
+      const res = await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors",
+        mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           city: form.city,
@@ -101,10 +101,18 @@ export default function SurveyForm() {
           timestamp: new Date().toISOString(),
         }),
       });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload || payload.status !== "success") {
+        throw new Error(
+          payload?.message ||
+            `Ошибка запроса: ${res.status} ${res.statusText}`.trim()
+        );
+      }
       setStatus("success");
       setForm(INITIAL);
       setStep(0);
-    } catch {
+    } catch (err) {
+      setErrors([err instanceof Error ? err.message : "Ошибка отправки"]);
       setStatus("error");
     }
   }

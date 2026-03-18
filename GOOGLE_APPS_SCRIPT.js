@@ -19,9 +19,29 @@
 //
 // =====================================================
 
+// ВАЖНО: укажите вашу таблицу и лист (надежнее, чем getActiveSpreadsheet в Web App)
+var SPREADSHEET_ID = "PASTE_YOUR_SHEET_ID_HERE";
+var SHEET_NAME = "Лист1";
+
+function getSheet_() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error("Лист не найден: " + SHEET_NAME);
+  return sheet;
+}
+
+function json_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 // Настройка заголовков при первом запуске
 function setupHeaders() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var sheet = getSheet_();
   var headers = [
     "Дата и время",
     "Город",
@@ -59,9 +79,12 @@ function setupHeaders() {
 // Обработка POST-запроса с формы
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheet = getSheet_();
 
     // Парсим данные из запроса
+    if (!e || !e.postData || !e.postData.contents) {
+      throw new Error("Пустое тело запроса (ожидаю JSON в body).");
+    }
     var data = JSON.parse(e.postData.contents);
 
     // Форматируем дату
@@ -89,23 +112,22 @@ function doPost(e) {
     ]);
 
     // Возвращаем успех
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: "success" }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return json_({ status: "success" });
 
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return json_({ status: "error", message: String(error) });
   }
+}
+
+// Для CORS preflight (когда фронт шлет JSON)
+function doOptions() {
+  return json_({ status: "ok" });
 }
 
 // Обработка GET-запроса (для тестирования)
 function doGet() {
-  return ContentService
-    .createTextOutput(JSON.stringify({
-      status: "ok",
-      message: "Скрипт работает! Используйте POST для отправки данных."
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return json_({
+    status: "ok",
+    message: "Скрипт работает! Используйте POST для отправки данных."
+  });
 }
